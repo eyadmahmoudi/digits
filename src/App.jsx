@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Check, Trash2, AlertCircle } from 'lucide-react';
+import { Check, Trash2, RotateCcw } from 'lucide-react';
 
 // ⚠️ REPLACE THESE WITH YOUR SUPABASE CREDENTIALS
 const SUPABASE_URL = 'https://wkezmkvfkreqnuahbseh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZXpta3Zma3JlcW51YWhic2VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMjAwMDcsImV4cCI6MjA4MDY5NjAwN30.G43IGhKMRuJbXGMdt1MNisLWvCUb4RzjiwTdny3WvsY';
 
-export default function DigitCollector() {
+export default function App() {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentDigit, setCurrentDigit] = useState(() => Math.floor(Math.random() * 10));
