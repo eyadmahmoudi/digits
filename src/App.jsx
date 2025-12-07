@@ -19,9 +19,9 @@ export default function App() {
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = 'black';
+    ctx.strokeStyle = 'white';
     ctx.lineWidth = 20;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -77,7 +77,7 @@ export default function App() {
   const clearCanvas = () => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'white';
+    ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
@@ -86,7 +86,16 @@ export default function App() {
     setError('');
     const canvas = canvasRef.current;
     
-    canvas.toBlob(async (blob) => {
+    // Create a temporary 28x28 canvas for saving
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 28;
+    tempCanvas.height = 28;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Draw the original canvas scaled down to 28x28
+    tempCtx.drawImage(canvas, 0, 0, 28, 28);
+    
+    tempCanvas.toBlob(async (blob) => {
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2, 9);
       const filename = `digit_${currentDigit}_${timestamp}_${randomId}.png`;
@@ -167,13 +176,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Your Submissions Counter */}
-          <div className="mb-6">
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 text-center border border-green-200">
-              <div className="text-3xl font-bold text-green-600">{submissions}</div>
-              <div className="text-sm text-gray-600 mt-1">Digits you've submitted</div>
-            </div>
-          </div>
 
           {/* Canvas */}
           <div className="mb-6">
