@@ -5,7 +5,7 @@ import { Check, Trash2, AlertCircle } from 'lucide-react';
 const SUPABASE_URL = 'https://wkezmkvfkreqnuahbseh.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndrZXpta3Zma3JlcW51YWhic2VoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMjAwMDcsImV4cCI6MjA4MDY5NjAwN30.G43IGhKMRuJbXGMdt1MNisLWvCUb4RzjiwTdny3WvsY';
 
-export default function DigitCollector() {
+export default function App() {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentDigit, setCurrentDigit] = useState(0);
@@ -17,6 +17,8 @@ export default function DigitCollector() {
 
   useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
+    
     const ctx = canvas.getContext('2d');
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -46,32 +48,48 @@ export default function DigitCollector() {
     }
   };
 
+  const getCoordinates = (e) => {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    
+    if (e.touches && e.touches[0]) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      };
+    }
+    
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  };
+
   const startDrawing = (e) => {
+    e.preventDefault();
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const coords = getCoordinates(e);
     
     ctx.beginPath();
-    ctx.moveTo(x, y);
+    ctx.moveTo(coords.x, coords.y);
     setIsDrawing(true);
   };
 
   const draw = (e) => {
+    e.preventDefault();
     if (!isDrawing) return;
     
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const coords = getCoordinates(e);
     
-    ctx.lineTo(x, y);
+    ctx.lineTo(coords.x, coords.y);
     ctx.stroke();
   };
 
-  const stopDrawing = () => {
+  const stopDrawing = (e) => {
+    e.preventDefault();
     setIsDrawing(false);
   };
 
@@ -88,71 +106,67 @@ export default function DigitCollector() {
     const canvas = canvasRef.current;
     
     canvas.toBlob(async (blob) => {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64data = reader.result;
-        
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(2, 9);
-        const filename = `digit_${currentDigit}_${timestamp}_${randomId}.png`;
-        
-        try {
-          // Upload to Supabase Storage
-          const storageResponse = await fetch(
-            `${SUPABASE_URL}/storage/v1/object/digits/${currentDigit}/${filename}`,
-            {
-              method: 'POST',
-              headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'image/png'
-              },
-              body: blob
-            }
-          );
-
-          if (!storageResponse.ok) {
-            throw new Error('Failed to upload image');
-          }
-
-          // Save metadata to database
-          const dbResponse = await fetch(`${SUPABASE_URL}/rest/v1/digits`, {
+      const timestamp = Date.now();
+      const randomId = Math.random().toString(36).substring(2, 9);
+      const filename = `digit_${currentDigit}_${timestamp}_${randomId}.png`;
+      
+      try {
+        // Upload to Supabase Storage
+        const storageResponse = await fetch(
+          `${SUPABASE_URL}/storage/v1/object/digits/${currentDigit}/${filename}`,
+          {
             method: 'POST',
             headers: {
               'apikey': SUPABASE_ANON_KEY,
               'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
+              'Content-Type': 'image/png'
             },
-            body: JSON.stringify({
-              digit: currentDigit,
-              filename: filename,
-              path: `${currentDigit}/${filename}`,
-              created_at: new Date().toISOString()
-            })
-          });
-
-          if (!dbResponse.ok) {
-            throw new Error('Failed to save to database');
+            body: blob
           }
+        );
 
-          setSubmissions(prev => prev + 1);
-          setTotalInDatabase(prev => prev + 1);
-          setShowSuccess(true);
-          
-          clearCanvas();
-          setTimeout(() => {
-            setShowSuccess(false);
-            setCurrentDigit((prev) => (prev + 1) % 10);
-          }, 1500);
-        } catch (error) {
-          console.error('Error saving digit:', error);
-          setError('Failed to save. Please check your Supabase configuration.');
-        } finally {
-          setIsSubmitting(false);
+        if (!storageResponse.ok) {
+          const errorData = await storageResponse.json();
+          throw new Error(errorData.message || 'Failed to upload image');
         }
-      };
-      reader.readAsDataURL(blob);
+
+        // Save metadata to database
+        const dbResponse = await fetch(`${SUPABASE_URL}/rest/v1/digits`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            digit: currentDigit,
+            filename: filename,
+            path: `${currentDigit}/${filename}`,
+            created_at: new Date().toISOString()
+          })
+        });
+
+        if (!dbResponse.ok) {
+          const errorData = await dbResponse.json();
+          throw new Error(errorData.message || 'Failed to save to database');
+        }
+
+        setSubmissions(prev => prev + 1);
+        setTotalInDatabase(prev => prev + 1);
+        setShowSuccess(true);
+        
+        clearCanvas();
+        setTimeout(() => {
+          setShowSuccess(false);
+          setCurrentDigit((prev) => (prev + 1) % 10);
+        }, 1500);
+      } catch (error) {
+        console.error('Error saving digit:', error);
+        setError(`Failed to save: ${error.message}. Check console for details.`);
+      } finally {
+        setIsSubmitting(false);
+      }
     }, 'image/png');
   };
 
@@ -203,11 +217,14 @@ export default function DigitCollector() {
                 ref={canvasRef}
                 width={400}
                 height={400}
-                className="cursor-crosshair w-full"
+                className="cursor-crosshair w-full touch-none"
                 onMouseDown={startDrawing}
                 onMouseMove={draw}
                 onMouseUp={stopDrawing}
                 onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
               />
             </div>
           </div>
@@ -230,14 +247,14 @@ export default function DigitCollector() {
               {showSuccess ? (
                 <>
                   <Check size={20} />
-                  Saved to Database!
+                  Saved!
                 </>
               ) : isSubmitting ? (
                 'Uploading...'
               ) : (
                 <>
                   <Check size={20} />
-                  Submit to Database
+                  Submit
                 </>
               )}
             </button>
@@ -247,8 +264,8 @@ export default function DigitCollector() {
             <div className="flex items-start gap-3">
               <AlertCircle className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
               <div className="text-sm text-blue-800">
-                <p className="font-semibold mb-1">All drawings are stored in Supabase</p>
-                <p>Admins can access and download all submitted digits from the database.</p>
+                <p className="font-semibold mb-1">All drawings stored in Supabase</p>
+                <p>Admins can download all submitted digits from the database.</p>
               </div>
             </div>
           </div>
