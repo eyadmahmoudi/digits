@@ -8,7 +8,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 export default function App() {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentDigit, setCurrentDigit] = useState(() => Math.floor(Math.random() * 10));
+  const [currentDigit, setCurrentDigit] = useState(0);
   const [submissions, setSubmissions] = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -146,7 +146,7 @@ export default function App() {
         clearCanvas();
         setTimeout(() => {
           setShowSuccess(false);
-          setCurrentDigit(Math.floor(Math.random() * 10));
+          setCurrentDigit((prev) => (prev + 1) % 10);
         }, 1200);
       } catch (error) {
         console.error('Error saving digit:', error);
